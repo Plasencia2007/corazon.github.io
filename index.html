@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>I Love You - Corazón 3D Ultra</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { 
+      background: #000; 
+      overflow: hidden; 
+      font-family: 'Poppins', sans-serif;
+      cursor: grab;
+    }
+    body.grabbing { cursor: grabbing; }
+    canvas { display: block; }
+    
+    #controls {
+      position: absolute;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 15px;
+      z-index: 100;
+    }
+    
+    .btn {
+      background: rgba(100, 200, 255, 0.15);
+      border: 2px solid rgba(100, 200, 255, 0.5);
+      color: #5fbcff;
+      padding: 12px 24px;
+      border-radius: 25px;
+      font-family: 'Poppins', sans-serif;
+      font-weight: 600;
+      font-size: 14px;
+      cursor: pointer;
+      backdrop-filter: blur(10px);
+      transition: all 0.3s ease;
+      text-shadow: 0 0 10px rgba(95, 188, 255, 0.5);
+    }
+    
+    .btn:hover {
+      background: rgba(100, 200, 255, 0.3);
+      border-color: rgba(100, 200, 255, 0.8);
+      box-shadow: 0 0 20px rgba(95, 188, 255, 0.4);
+      transform: translateY(-2px);
+    }
+    
+    .btn.active {
+      background: rgba(100, 200, 255, 0.4);
+      border-color: #5fbcff;
+      box-shadow: 0 0 25px rgba(95, 188, 255, 0.6);
+    }
+    
+    #info {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      color: rgba(255, 255, 255, 0.6);
+      font-size: 12px;
+      text-align: right;
+      text-shadow: 0 0 10px rgba(0, 0, 0, 0.8);
+    }
+  </style>
+</head>
+<body>
+<canvas id="scene"></canvas>
+
+<div id="controls">
+  <button class="btn" id="speedBtn">🚀 Velocidad</button>
+  <button class="btn" id="particlesBtn">✨ Más Partículas</button>
+  <button class="btn" id="wordsBtn">💬 Palabras</button>
+  <button class="btn" id="explosionBtn">💥 Explosión</button>
+</div>
+
+<div id="info">
+  Arrastra para rotar | Click para acelerar
+</div>
+
+<script>
+const canvas = document.getElementById("scene");
+const ctx = canvas.getContext("2d");
+
+let w, h;
+function resize() {
+  w = canvas.width = window.innerWidth;
+  h = canvas.height = window.innerHeight;
+}
+window.addEventListener("resize", resize);
+resize();
+
+// ========== CONFIGURACIÓN ==========
+let config = {
+  showWords: true,
+  particleCount: 1800, // más partículas por defecto
+  autoRotate: true,
+  explosionMode: false
+};
+
+// ========== FONDO DE ESTRELLAS ==========
+const stars = [];
+for (let i = 0; i < 400; i++) {
+  stars.push({
+    x: Math.random() * w,
+    y: Math.random() * h,
+    z: Math.random(),
+    r: Math.random() * 1.5,
+    alpha: 0.3 + Math.random() * 0.7,
+    speed: 0.05 + Math.random() * 0.2,
+    twinkleSpeed: 0.02 + Math.random() * 0.03,
+    twinklePhase: Math.random() * Math.PI * 2
+  });
+}
+
+// ========== PALABRAS DE AMOR ==========
+const words = [
+  "Love", "Te amo", "Mi vida", "I love you", "Forever",
+  "Besos", "Tú y yo", "Siempre", "Mi corazón", "Soul",
+  "Amor", "Mi cielo", "Juntos", "Eternal", "Dream"
+];
+
+// ========== PARTÍCULAS DEL CORAZÓN ==========
+let particles = [];
+
+function heartFunction(t) {
+  const x = 16 * Math.pow(Math.sin(t), 3);
+  const y = 13 * Math.cos(t) - 5 * Math.cos(2 * t) - 2 * Math.cos(3 * t) - Math.cos(4 * t);
+  return { x, y };
+}
+
+function createParticles(count) {
+  particles = [];
+  const scale = 8; // un pelín más grande
+
+  for (let i = 0; i < count; i++) {
+    // ángulo aleatorio para que no se vean bandas
+    const t = Math.random() * Math.PI * 2;
+    const p = heartFunction(t);
+    
+    // r con exponente para llenar más el interior (corazón más "cerrado")
+    const r = Math.pow(Math.random(), 0.32); // muchos puntos dentro
+    const baseX = p.x * scale * r;
+    const baseY = -p.y * scale * r;
+
+    // profundidad base -> forma 3D más marcada
+    const baseZ = (1 - r) * 80 * (Math.random() > 0.5 ? 1 : -1);
+
+    particles.push({
+      baseX,
+      baseY,
+      baseZ,
+      x: (Math.random() - 0.5) * w * 2.5,
+      y: (Math.random() - 0.5) * h * 2.5,
+      z: (Math.random() * 2 - 1) * 40, // punto de partida
+      vx: 0,
+      vy: 0,
+      size: 1.2 + Math.random() * 2,
+      word: (i % 45 === 0 && Math.random() > 0.3) ? words[(Math.random() * words.length) | 0] : null,
+      alpha: 0.45 + Math.random() * 0.55,
+      hue: 190 + Math.random() * 40,
+      pulsePhase: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.02 + Math.random() * 0.03
+    });
+  }
+}
+
+createParticles(config.particleCount);
+
+// ========== ROTACIÓN Y MOUSE ==========
+let angleX = 0;
+let angleY = 0;
+let targetAngleX = 0;
+let targetAngleY = 0;
+let spinSpeed = 0.004;
+let targetSpinSpeed = 0.004;
+
+let isDragging = false;
+let lastMouseX = 0;
+let lastMouseY = 0;
+
+canvas.addEventListener("mousedown", (e) => {
+  isDragging = true;
+  lastMouseX = e.clientX;
+  lastMouseY = e.clientY;
+  document.body.classList.add("grabbing");
+  config.autoRotate = false;
+});
+
+canvas.addEventListener("mousemove", (e) => {
+  if (isDragging) {
+    const dx = e.clientX - lastMouseX;
+    const dy = e.clientY - lastMouseY;
+    targetAngleY += dx * 0.005;
+    targetAngleX += dy * 0.005;
+    lastMouseX = e.clientX;
+    lastMouseY = e.clientY;
+  }
+});
+
+canvas.addEventListener("mouseup", () => {
+  isDragging = false;
+  document.body.classList.remove("grabbing");
+});
+
+canvas.addEventListener("mouseleave", () => {
+  isDragging = false;
+  document.body.classList.remove("grabbing");
+});
+
+canvas.addEventListener("click", () => {
+  if (!isDragging) {
+    targetSpinSpeed = targetSpinSpeed === 0.004 ? 0.025 : 0.004;
+  }
+});
+
+// ========== CONTROLES ==========
+document.getElementById("speedBtn").addEventListener("click", function() {
+  targetSpinSpeed = targetSpinSpeed === 0.004 ? 0.025 : 0.004;
+  this.classList.toggle("active");
+});
+
+document.getElementById("particlesBtn").addEventListener("click", function() {
+  config.particleCount = config.particleCount === 1800 ? 2800 : 1800;
+  createParticles(config.particleCount);
+  this.classList.toggle("active");
+});
+
+document.getElementById("wordsBtn").addEventListener("click", function() {
+  config.showWords = !config.showWords;
+  this.classList.toggle("active");
+});
+
+document.getElementById("explosionBtn").addEventListener("click", function() {
+  config.explosionMode = !config.explosionMode;
+  this.classList.toggle("active");
+  
+  if (config.explosionMode) {
+    particles.forEach(p => {
+      const angle = Math.random() * Math.PI * 2;
+      const speed = 5 + Math.random() * 10;
+      p.vx = Math.cos(angle) * speed;
+      p.vy = Math.sin(angle) * speed;
+    });
+  }
+});
+
+// ========== RENDERIZADO ==========
+let time = 0;
+
+function drawBackground() {
+  const g = ctx.createRadialGradient(w / 2, h / 2, 0, w / 2, h / 2, Math.max(w, h) * 0.8);
+  g.addColorStop(0, "#000520");
+  g.addColorStop(0.5, "#000215");
+  g.addColorStop(1, "#000000");
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, w, h);
+
+  for (const s of stars) {
+    s.y += s.speed;
+    if (s.y > h) {
+      s.y = 0;
+      s.x = Math.random() * w;
+    }
+    
+    s.twinklePhase += s.twinkleSpeed;
+    const twinkle = 0.3 + Math.abs(Math.sin(s.twinklePhase)) * 0.7;
+    
+    ctx.globalAlpha = s.alpha * twinkle * (0.5 + s.z * 0.5);
+    ctx.beginPath();
+    ctx.arc(s.x, s.y, s.r * (0.5 + s.z * 0.5), 0, Math.PI * 2);
+    
+    const starGlow = ctx.createRadialGradient(s.x, s.y, 0, s.x, s.y, s.r * 3);
+    starGlow.addColorStop(0, "#ffffff");
+    starGlow.addColorStop(0.5, "#aaccff");
+    starGlow.addColorStop(1, "rgba(170, 204, 255, 0)");
+    ctx.fillStyle = starGlow;
+    ctx.fill();
+  }
+  ctx.globalAlpha = 1;
+}
+
+function rotate3D(x, y, z, ax, ay) {
+  let y1 = y * Math.cos(ax) - z * Math.sin(ax);
+  let z1 = y * Math.sin(ax) + z * Math.cos(ax);
+  let x1 = x * Math.cos(ay) - z1 * Math.sin(ay);
+  let z2 = x * Math.sin(ay) + z1 * Math.cos(ay);
+  return { x: x1, y: y1, z: z2 };
+}
+
+function drawHeart() {
+  time += 0.016;
+  
+  spinSpeed += (targetSpinSpeed - spinSpeed) * 0.03;
+  
+  if (config.autoRotate) {
+    targetAngleY += spinSpeed;
+  }
+  
+  angleX += (targetAngleX - angleX) * 0.1;
+  angleY += (targetAngleY - angleY) * 0.1;
+
+  const transformed = [];
+  
+  for (const p of particles) {
+    if (config.explosionMode) {
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.98;
+      p.vy *= 0.98;
+      if (Math.abs(p.vx) < 0.1 && Math.abs(p.vy) < 0.1) {
+        p.x += (p.baseX - p.x) * 0.02;
+        p.y += (p.baseY - p.y) * 0.02;
+      }
+    } else {
+      p.x += (p.baseX - p.x) * 0.06;
+      p.y += (p.baseY - p.y) * 0.06;
+    }
+    // acercar z al z base para formar volumen
+    p.z += (p.baseZ - p.z) * 0.06;
+
+    const rotated = rotate3D(p.x, p.y, p.z, angleX, angleY);
+    
+    const perspective = 2.0 + rotated.z / 220; // más diferencia = más 3D
+    const screenX = w / 2 + rotated.x * perspective;
+    const screenY = h / 2 + rotated.y * perspective;
+    
+    transformed.push({
+      p,
+      screenX,
+      screenY,
+      perspective,
+      z: rotated.z
+    });
+  }
+  
+  transformed.sort((a, b) => a.z - b.z);
+  
+  for (const t of transformed) {
+    const { p, screenX, screenY, perspective, z } = t;
+    
+    const depth = 1 - (z + 120) / 240;
+    const brightness = Math.max(0.3, depth);
+    
+    p.pulsePhase += p.pulseSpeed;
+    const pulse = 0.85 + Math.sin(p.pulsePhase) * 0.15;
+    
+    if (p.word && config.showWords) {
+      ctx.font = `${(8 * perspective + 8) * pulse}px 'Poppins'`;
+      ctx.textAlign = "center";
+      ctx.fillStyle = `rgba(255, 255, 255, ${(0.6 + brightness * 0.4) * pulse})`;
+      ctx.shadowBlur = 15;
+      ctx.shadowColor = `rgba(95, 188, 255, ${brightness * 0.8})`;
+      ctx.fillText(p.word, screenX, screenY);
+      ctx.shadowBlur = 0;
+    } else {
+      const size = p.size * perspective * pulse;
+      
+      ctx.beginPath();
+      const glowGrad = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, size * 3.8);
+      glowGrad.addColorStop(0, `hsla(${p.hue}, 80%, 70%, ${brightness * 0.7})`);
+      glowGrad.addColorStop(0.4, `hsla(${p.hue}, 70%, 60%, ${brightness * 0.35})`);
+      glowGrad.addColorStop(1, `hsla(${p.hue}, 60%, 50%, 0)`);
+      ctx.fillStyle = glowGrad;
+      ctx.arc(screenX, screenY, size * 3.8, 0, Math.PI * 2);
+      ctx.fill();
+      
+      ctx.beginPath();
+      const coreGrad = ctx.createRadialGradient(screenX, screenY, 0, screenX, screenY, size);
+      coreGrad.addColorStop(0, `rgba(255, 255, 255, ${brightness})`);
+      coreGrad.addColorStop(0.5, `hsla(${p.hue}, 100%, 80%, ${brightness * 0.85})`);
+      coreGrad.addColorStop(1, `hsla(${p.hue}, 80%, 60%, ${brightness * 0.45})`);
+      ctx.fillStyle = coreGrad;
+      ctx.arc(screenX, screenY, size, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  ctx.save();
+  ctx.translate(w / 2, h / 2 + 180);
+  const platformRadius = 120;
+  const platformGrad = ctx.createRadialGradient(0, 0, 0, 0, 0, platformRadius);
+  platformGrad.addColorStop(0, "rgba(120, 200, 255, 0.8)");
+  platformGrad.addColorStop(0.2, "rgba(80, 160, 255, 0.5)");
+  platformGrad.addColorStop(0.5, "rgba(50, 120, 200, 0.2)");
+  platformGrad.addColorStop(1, "rgba(0, 0, 30, 0)");
+  ctx.fillStyle = platformGrad;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, platformRadius * 1.5, platformRadius * 0.3, 0, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+}
+
+function drawText() {
+  const pulse = 1 + Math.sin(time * 2) * 0.05;
+  
+  ctx.font = `700 ${52 * pulse}px 'Poppins'`;
+  ctx.textAlign = "center";
+  
+  ctx.shadowColor = "rgba(0, 0, 0, 0.8)";
+  ctx.shadowBlur = 30;
+  ctx.shadowOffsetY = 5;
+  
+  const textGrad = ctx.createLinearGradient(w / 2 - 150, 0, w / 2 + 150, 0);
+  textGrad.addColorStop(0, "#ffffff");
+  textGrad.addColorStop(0.5, "#5fbcff");
+  textGrad.addColorStop(1, "#ffffff");
+  ctx.fillStyle = textGrad;
+  
+  ctx.fillText("I Love You", w / 2, h * 0.12);
+  
+  ctx.shadowColor = "#5fbcff";
+  ctx.shadowBlur = 40;
+  ctx.fillText("I Love You", w / 2, h * 0.12);
+  
+  ctx.shadowBlur = 0;
+  ctx.shadowOffsetY = 0;
+}
+
+function loop() {
+  requestAnimationFrame(loop);
+  drawBackground();
+  drawHeart();
+  drawText();
+}
+
+loop();
+</script>
+</body>
+</html>
